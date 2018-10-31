@@ -7,7 +7,8 @@ var objectsRef = {
     3: " █ ",  // fantasmas
 };
 var player = {
-    position: [0, 0]  // y - x
+    position: [0, 0],  // y - x
+    last_position: [0, 0]
 };
 var ghosts = [];
 var consoleInterval = undefined;
@@ -65,6 +66,7 @@ function initPlayer () {
             if (board[y][x] == 1) {
                 board[y][x] = 2;  // Especifica al jugador en la casilla seleccionada.
                 player.position = [y, x];
+                player.last_position = player.position;
                 initialize = true;
             }
         }
