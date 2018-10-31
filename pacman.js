@@ -8,7 +8,9 @@ var objectsRef = {
 };
 var player = {
     position: [0, 0],  // y - x
-    last_position: [0, 0]
+    last_position: [0, 0],
+    direction: [0, 0],  // y - x
+    routine: undefined
 };
 var ghosts = [];
 var consoleInterval = undefined;
@@ -18,6 +20,7 @@ function init() {
     initBoard();
     initPlayer();
     initGhost();
+    initializeEvents();
     visualizeOnConsole();
 }
 
@@ -67,6 +70,7 @@ function initPlayer() {
                 board[y][x] = 2;  // Especifica al jugador en la casilla seleccionada.
                 player.position = [y, x];
                 player.last_position = player.position;  // Indica la última posición en la que ha estado el jugador.
+                player.routine = initPlayerRoutine();
                 initialize = true;
             }
         }
@@ -86,11 +90,11 @@ function initGhost() {
                     ghosts.push({
                         position: [y, x],  // y - x
                         last_position: [y, x],
-                        rutine: initGhostRutine(i)
+                        routine: initGhostRoutine(i)
                     });
                     // ghosts[i].position = [y, x];
                     // ghosts[i].last_position = ghosts[i].position;
-                    // ghosts[i].rutine = initGhostRutine(i);
+                    // ghosts[i].routine = initGhostRoutine(i);
                     initialize = true;
                 }
             }
@@ -98,11 +102,57 @@ function initGhost() {
     }
 }
 
+/* Inicializa la rutina del personaje */
+function initPlayerRoutine() {
+    return setInterval(() => {
+        var moved = false;
+        var playerHasntMoved = (player.direction[0] == 0 && player.direction[1] == 0);
+        do {
+            var currentPosition = player.position;  // Posición actual del jugador
+            // Genera random entre [-1 y 1]
+            var randX = 0;
+            var randY = 0;
+
+            if (playerHasntMoved) {
+                // El jugador todavía no ha apretado ninguna flecha de dirección, asi que se le
+                // asignará una ruta aleatoria.
+                randX = Math.floor(Math.random() * (2 - (-1))) + (-1);
+                randY = Math.floor(Math.random() * (2 - (-1))) + (-1);
+            }
+            else {
+                // El jugador ya ha apretado una flecha de dirección, por lo cual moverá él al personaje.
+                randX = player.direction[1];
+                randY = player.direction[0];
+            }
+            
+            // Comprueba que la dirección sea horizontal o vertical
+            if ((randX == 0 && randY == 1) || (randX == 1 && randY == 0) 
+                || (randX == -1 && randY == 0) || (randX == 0 && randY == -1)) {
+                // Le suma los valores aleatorios para crear la posición a la que se podrá mover el jugador
+                var x = currentPosition[1] + randX;
+                var y = currentPosition[0] + randY;
+
+                if (board[y][x] == 1) {
+                    // El jugador se mueve si hay camino y si es una dirección diferente de por donde ha venido
+                    board[currentPosition[0]][currentPosition[1]] = 1;
+                    board[y][x] = 2;
+                    player.last_position = player.position;
+                    player.position = [y, x];
+                    moved = true;
+                }
+                else {
+                    // Colisiona contra un fantasma
+                    moved = true;  // Es necesario para que el bucle termine aunque el jugador ya haya perdido.
+                }
+            }
+        } while (!moved);
+    }, 400);  // 0,4 segundos
+}
+
 /* Inicializa la rutina del fantasma */
-function initGhostRutine(id_ghost) {
+function initGhostRoutine(id_ghost) {
     return setInterval((id_ghost) => {
         var moved = false;
-        var triesToMove = 0;
         do {
             var currentPosition = ghosts[id_ghost].position;  // Posición actual del fantasma en cuestión
             // Genera random entre [-1 y 1]
@@ -116,7 +166,7 @@ function initGhostRutine(id_ghost) {
                 var x = currentPosition[1] + randX;
                 var y = currentPosition[0] + randY;
 
-                if (board[y][x] == 1 && (y != ghosts[id_ghost].last_position[0] || x != ghosts[id_ghost].last_position[1])) {
+                if ((board[y][x] == 1 || board[y][x] == 3) && (y != ghosts[id_ghost].last_position[0] || x != ghosts[id_ghost].last_position[1])) {
                     // El fantasma se mueve si hay camino y si es una dirección diferente de por donde ha venido
                     board[currentPosition[0]][currentPosition[1]] = 1;
                     board[y][x] = 3;
@@ -129,18 +179,9 @@ function initGhostRutine(id_ghost) {
                     playerDefeated();
                     moved = true;
                 }
-                else if (board[y][x] == 3 && (y != ghosts[id_ghost].last_position[0] || x != ghosts[id_ghost].last_position[1])) {
-                    // Si el fantasma choca contra otro fantasma se le dará hasta un máximo de 12 oportunidades
-                    // para encontrar un nuevo camino. En caso de que no lo encuentre se le permitirá volver
-                    // sobre sus pasos.
-                    triesToMove++;
-                    if (triesToMove < 12) {
-                        ghosts[id_ghost].last_position = [y, x];
-                    }
-                }
             }
         } while (!moved);
-    }, 400, id_ghost);  // 2 segundos
+    }, 400, id_ghost);  // 0,4 segundos
 }
 
 /* Detiene el juego cuando el jugador es derrotado */
@@ -148,15 +189,38 @@ function playerDefeated() {
     console.log("¡¡¡Jugador derrotado!!!");
     document.body.style.backgroundColor = "red";
 
-    // Para el intervalo de los enemigos
+    // Detiene el intervalo del jugador
+    clearInterval(player.routine);
+    player.routine = undefined;
+
+    // Detiene el intervalo de los enemigos
     for (var i = 0; i < ghosts.length; i++) {
-        clearInterval(ghosts[i].rutine);
-        ghosts[i].rutine = undefined;
+        clearInterval(ghosts[i].routine);
+        ghosts[i].routine = undefined;
     }
 
-    // Para el intervalo de actualizar el juego en la consola
+    // Detiene el intervalo de actualizar el juego en la consola
     clearInterval(consoleInterval);
     consoleInterval = undefined;
+}
+
+function initializeEvents() {
+    document.addEventListener('keydown', function (event) {
+        switch (event.keyCode) {
+            case 37:  // left
+                player.direction = [0, -1];
+                break;
+            case 38:  // up
+                player.direction = [1, 0];
+                break;
+            case 39:  // right
+                player.direction = [0, 1];
+                break;
+            case 40:  // down
+                player.direction = [-1, 0];
+                break;
+        }
+    });
 }
 
 /* Visualiza el tablero en la consola */
@@ -171,7 +235,7 @@ function visualizeOnConsole() {
             result += "\n";
         }
         console.log(result);
-    }, 200);
+    }, 200);  // 0,2 segundos
 }
 
 init();
