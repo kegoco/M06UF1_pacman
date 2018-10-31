@@ -10,14 +10,23 @@ var player = {
     position: [0, 0],  // y - x
     last_position: [0, 0],
     direction: [0, 0],  // y - x
+    image: new Image(),
     routine: undefined
 };
 var ghosts = [];
 var consoleInterval = undefined;
 
+// Canvas
+var blockImg = new Image();
+var floorImg = new Image();
+var c = document.getElementById("pacman");
+var ctx = c.getContext("2d");
+
+
 /* Inicializa la aplicación */
 function init() {
     initBoard();
+    createBoardCanvas();
     initPlayer();
     initGhost();
     initializeEvents();
@@ -57,6 +66,18 @@ function initBoard() {
     board[27]  = [0, 1, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 1, 0, 0, 1, 0];
     board[28]  = [0, 1, 1, 1, 1, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 1, 1, 1, 1, 0];
     board[29]  = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+
+    // Carga la imagen de bloques
+    blockImg.onload = function() {
+        createBoardCanvas();
+    };
+    blockImg.src = "img/block.png";
+
+    // Carga la imagen del suelo
+    floorImg.onload = function() {
+        createFloorCanvas();
+    };
+    floorImg.src = "img/floor.png";
 }
 
 /* Inicializa al jugador */
@@ -71,6 +92,7 @@ function initPlayer() {
                 player.position = [y, x];
                 player.last_position = player.position;  // Indica la última posición en la que ha estado el jugador.
                 player.routine = initPlayerRoutine();
+                player.image.src = "img/player.png";
                 initialize = true;
             }
         }
@@ -90,8 +112,10 @@ function initGhost() {
                     ghosts.push({
                         position: [y, x],  // y - x
                         last_position: [y, x],
+                        image: new Image(),
                         routine: initGhostRoutine(i)
                     });
+                    ghosts[i].image.src = "img/ghost.png";
                     // ghosts[i].position = [y, x];
                     // ghosts[i].last_position = ghosts[i].position;
                     // ghosts[i].routine = initGhostRoutine(i);
@@ -138,6 +162,11 @@ function initPlayerRoutine() {
                     board[y][x] = 2;
                     player.last_position = player.position;
                     player.position = [y, x];
+                    
+                    // TODO: Hacer una función para actualizar la imagen del jugador y otra para el suelo
+                    ctx.clearRect(currentPosition[1] * 20, currentPosition[0] * 20, 20, 20);
+                    ctx.drawImage(player.image, x * 20, y * 20, 20, 20);
+
                     moved = true;
                 }
                 else {
@@ -172,6 +201,11 @@ function initGhostRoutine(id_ghost) {
                     board[y][x] = 3;
                     ghosts[id_ghost].last_position = ghosts[id_ghost].position;
                     ghosts[id_ghost].position = [y, x];
+
+                    // TODO: Hacer una función para actualizar la imagen del jugador y otra para el suelo
+                    ctx.clearRect(currentPosition[1] * 20, currentPosition[0] * 20, 20, 20);
+                    ctx.drawImage(ghosts[id_ghost].image, x * 20, y * 20, 20, 20);
+
                     moved = true;
                 }
                 else if (board[y][x] == 2) {
@@ -204,6 +238,7 @@ function playerDefeated() {
     consoleInterval = undefined;
 }
 
+/* Inicializa los eventos del videojuego */
 function initializeEvents() {
     document.addEventListener('keydown', function (event) {
         switch (event.keyCode) {
@@ -211,26 +246,47 @@ function initializeEvents() {
                 player.direction = [0, -1];
                 break;
             case 38:  // up
-                player.direction = [1, 0];
+                player.direction = [-1, 0];  // Se ha invertido el valor, porque el canvas está en modo espejo...
                 break;
             case 39:  // right
                 player.direction = [0, 1];
                 break;
             case 40:  // down
-                player.direction = [-1, 0];
+                player.direction = [1, 0];  // Se ha invertido el valor, porque el canvas está en modo espejo...
                 break;
         }
     });
 }
 
+/* Crea los bloques en el canvas */
+function createBoardCanvas() {
+    for (var y = 0; y < board.length; y++) {
+        for (var x = 0; x < board[y].length; x++) {
+            if (board[y][x] == 0) {
+                ctx.drawImage(blockImg, x * 20, y * 20, 20, 20);
+            }
+        }
+    }
+}
+
+/* Crea el suelo en el canvas */
+function createFloorCanvas() {
+    for (var y = board.length - 1; y >= 0; y--) {
+        for (var x = 0; x < board[y].length; x++) {
+            if (board[y][x] == 1) {
+                ctx.drawImage(floorImg, x * 20, y * 20, 20, 20);
+            }
+        }
+    }
+}
+
 /* Visualiza el tablero en la consola */
 function visualizeOnConsole() {
     consoleInterval = setInterval(() => {
-        var container = document.getElementById("container");
         var result = "";
         for (var y = board.length - 1; y >= 0; y--) {
             for (var x = 0; x < board[y].length; x++) {
-                result += objectsRef[board[y][x]];  //(board[y][x] == 0) ? " X " : "   ";
+                result += objectsRef[board[y][x]];
             }
             result += "\n";
         }
