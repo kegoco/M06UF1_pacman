@@ -104,7 +104,7 @@ function initGhostRutine(id_ghost) {
         var moved = false;
         var triesToMove = 0;
         do {
-            var currentPosition = ghosts[id_ghost].position;
+            var currentPosition = ghosts[id_ghost].position;  // Posición actual del fantasma en cuestión
             // Genera random entre [-1 y 1]
             var randX = Math.floor(Math.random() * (2 - (-1))) + (-1);
             var randY = Math.floor(Math.random() * (2 - (-1))) + (-1);
