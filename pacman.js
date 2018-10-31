@@ -57,7 +57,7 @@ function initBoard() {
 }
 
 /* Inicializa al jugador */
-function initPlayer () {
+function initPlayer() {
     var initialize = false;
     do {
         var x = Math.floor(Math.random() * (31 - 0)) + 0; 
@@ -66,7 +66,7 @@ function initPlayer () {
             if (board[y][x] == 1) {
                 board[y][x] = 2;  // Especifica al jugador en la casilla seleccionada.
                 player.position = [y, x];
-                player.last_position = player.position;
+                player.last_position = player.position;  // Indica la última posición en la que ha estado el jugador.
                 initialize = true;
             }
         }
@@ -74,7 +74,7 @@ function initPlayer () {
 }
 
 /* Inicializa a los fantasmas */
-function initGhost () {
+function initGhost() {
     for (var i = 0; i < 3; i++) {
         var initialize = false;
         do {
