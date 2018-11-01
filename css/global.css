@@ -1,0 +1,28 @@
+.container {
+    width: 600px;
+    margin: 0 auto;
+    background-color: aqua;
+    border: 2px solid black;
+}
+
+#msg-container {
+    width: 600px;
+    top: 25%;
+    position: fixed;
+    text-align: center;
+    opacity: 0.9;
+    border: 2px solid black;
+    font-weight: bold;
+}
+
+.victory {
+    background-color: green;
+}
+
+.defeat {
+    background-color: red;
+}
+
+.hide {
+    display: none;
+}

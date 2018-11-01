@@ -1,4 +1,19 @@
 /* Variables */
+
+// Cookies
+var countParties = 0;
+var maxScore = 0;
+
+// Puntuación
+var score = 0;
+var scoreText = document.getElementById("score");
+var msg_container = document.getElementById("msg-container");
+var msg_state = document.getElementById("msg-state");
+var msg_score = document.getElementById("msg-score");
+var msg_max_score = document.getElementById("msg-max_score");
+const GAME_TIME = 180000;  // 50 minutos = 180000 segundos
+
+// Objetos
 var board = [];
 var objectsRef = {
     0: " X ",  // pared
@@ -14,7 +29,10 @@ var player = {
     routine: undefined
 };
 var ghosts = [];
+
+// Intervalos
 var consoleInterval = undefined;
+var canvasInterval = undefined;
 
 // Canvas
 var blockImg = new Image();
@@ -25,12 +43,65 @@ var ctx = c.getContext("2d");
 
 /* Inicializa la aplicación */
 function init() {
+    loadCookies();
     initBoard();
     createBoardCanvas();
     initPlayer();
     initGhost();
     initializeEvents();
-    visualizeOnConsole();
+    //visualizeOnConsole();
+    updateCanvas();
+}
+
+/* Recarga la página actual */
+function restartGame() {
+    location.reload();
+}
+
+function deleteAllCookies() {
+    var cookies = document.cookie.split(";");
+
+    for (var i = 0; i < cookies.length; i++) {
+        var cookie = cookies[i];
+        var eqPos = cookie.indexOf("=");
+        var name = eqPos > -1 ? cookie.substr(0, eqPos) : cookie;
+        document.cookie = name + "=;expires=Thu, 01 Jan 1970 00:00:00 GMT";
+    }
+}
+
+/* Coge el valor de la cookie especificada */
+function getCookie(cookieName) {
+    var value = "";
+    document.cookie.split("; ").filter((item) => {
+        var itemArray = item.split("=");
+        if (itemArray[0] == cookieName) {
+            value = itemArray[1];
+        }
+    });
+    return value;
+}
+
+/* Guarda el valor especificado en una cookie */
+function setCookie(cookie_name, cookie_value) {
+    var cookie_expire = new Date();
+    cookie_expire.setFullYear(cookie_expire.getFullYear() + 1);  // Hace que la cookie expire en un año
+
+    document.cookie = cookie_name + "=" + cookie_value + ";expires=" + cookie_expire;
+}
+
+/* Carga las cookies */
+function loadCookies() {
+    var cp = getCookie("countParties");
+    var ms = getCookie("maxScore");
+
+    countParties = (cp != "") ? parseInt(cp) : 0;
+    maxScore = (ms != "") ? parseInt(ms) : 0;
+}
+
+/* Guarda las cookies */
+function saveCookies(cp, ms) {
+    setCookie("countParties", cp);
+    setCookie("maxScore", ms);
 }
 
 /* Inicializa el tablero */
@@ -162,11 +233,6 @@ function initPlayerRoutine() {
                     board[y][x] = 2;
                     player.last_position = player.position;
                     player.position = [y, x];
-                    
-                    // TODO: Hacer una función para actualizar la imagen del jugador y otra para el suelo
-                    ctx.clearRect(currentPosition[1] * 20, currentPosition[0] * 20, 20, 20);
-                    ctx.drawImage(player.image, x * 20, y * 20, 20, 20);
-
                     moved = true;
                 }
                 else {
@@ -201,11 +267,6 @@ function initGhostRoutine(id_ghost) {
                     board[y][x] = 3;
                     ghosts[id_ghost].last_position = ghosts[id_ghost].position;
                     ghosts[id_ghost].position = [y, x];
-
-                    // TODO: Hacer una función para actualizar la imagen del jugador y otra para el suelo
-                    ctx.clearRect(currentPosition[1] * 20, currentPosition[0] * 20, 20, 20);
-                    ctx.drawImage(ghosts[id_ghost].image, x * 20, y * 20, 20, 20);
-
                     moved = true;
                 }
                 else if (board[y][x] == 2) {
@@ -218,11 +279,48 @@ function initGhostRoutine(id_ghost) {
     }, 400, id_ghost);  // 0,4 segundos
 }
 
-/* Detiene el juego cuando el jugador es derrotado */
-function playerDefeated() {
-    console.log("¡¡¡Jugador derrotado!!!");
-    document.body.style.backgroundColor = "red";
+/* El jugador gana la partida */
+function playerWin() {
+    killIntervals();
+    calculateScore(true);
+}
 
+/* El jugador pierde la partida */
+function playerDefeated() {
+    killIntervals();
+    calculateScore(false);
+}
+
+/* Calcula la puntuación final */
+function calculateScore(win) {
+    var finalScore = (countParties * 60) + parseInt(score);
+    countParties++;
+    if (finalScore > maxScore) {
+        // El jugador ha superado su record
+        maxScore = finalScore;
+    }
+    saveCookies(countParties, maxScore);
+
+    // Muestra el mensaje
+    showMessage({
+        class: (win) ? "victory" : "defeat",
+        message: (win) ? "VICTORIA" : "DERROTA",
+        score: "Puntuación actual: " + finalScore,
+        max_score: "Mejor puntuación: " + maxScore
+    });
+}
+
+/* Muestra el mensaje de victoria o derrota */
+function showMessage(data) {
+    msg_container.classList.remove("hide");
+    msg_container.classList.add(data.class);
+    msg_state.innerHTML = data.message;
+    msg_score.innerHTML = data.score;
+    msg_max_score.innerHTML = data.max_score;
+}
+
+/* Detiene todos los intervalos */
+function killIntervals() {
     // Detiene el intervalo del jugador
     clearInterval(player.routine);
     player.routine = undefined;
@@ -236,6 +334,10 @@ function playerDefeated() {
     // Detiene el intervalo de actualizar el juego en la consola
     clearInterval(consoleInterval);
     consoleInterval = undefined;
+
+    // Detiene el intervalo de actualizar el canvas
+    clearInterval(canvasInterval);
+    canvasInterval = undefined;
 }
 
 /* Inicializa los eventos del videojuego */
@@ -277,6 +379,40 @@ function createFloorCanvas() {
                 ctx.drawImage(floorImg, x * 20, y * 20, 20, 20);
             }
         }
+    }
+}
+
+/* Actualiza el canvas y el estado de la partida */
+function updateCanvas() {
+    canvasInterval = setInterval(() => {
+        // Coge el 
+        c.width = c.width;
+
+        // Actualiza los bloques y el suelo
+        createBoardCanvas();
+        createFloorCanvas();
+
+        // Actualiza al personaje y a los fantasmas
+        ctx.drawImage(player.image, player.position[1] * 20, player.position[0] * 20, 20, 20);
+        for (var i = 0; i < ghosts.length; i++) {
+            ctx.drawImage(ghosts[i].image, ghosts[i].position[1] * 20, ghosts[i].position[0] * 20, 20, 20);
+        }
+
+        // Actualiza la puntuación
+        updateScore();
+    }, 200);  // 0,2 segundos
+}
+
+/* Actualiza la puntuación del jugador */
+function updateScore() {
+    // Actualiza la puntuación
+    score += 0.2;
+    scoreText.innerHTML = "Puntuación: " + parseInt(score);
+
+    // Comprueba el tiempo restante
+    if (score >= GAME_TIME) {
+        // El jugador gana la partida
+        playerWin();
     }
 }
 

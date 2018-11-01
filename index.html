@@ -3,13 +3,31 @@
 
 <head>
     <meta charset="UTF-8">
+
+    <!-- STYLES -->
+    <link rel="stylesheet" type="text/css" href="css/global.css">
+    
     <title>Pacman</title>
 </head>
 
 <body>
     <div class="container">
-        <canvas id="pacman" width="600" height="600" style="border:1px solid black;"></canvas>
+        <!-- MENSAJE VICTORIA/DERROTA -->
+        <div id="msg-container" class="hide">
+            <h2 id="msg-state">VICTORIA</h2>
+            <p id="msg-score">Puntuación actual: 0</p>
+            <p id="msg-max_score">Mejor puntuación: 0</p>
+            <button onclick="restartGame()">Volver a jugar</button>
+        </div>
+
+        <!-- PUNTUACIÓN -->
+        <h3 id="score">Puntuación: 0</h3>
+
+        <!-- PACMAN -->
+        <canvas id="pacman" width="600" height="600"></canvas>
     </div>
+
+    <!-- SCRIPTS -->
     <script src="./pacman.js"></script>
 </body>
 
