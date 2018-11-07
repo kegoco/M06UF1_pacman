@@ -25,10 +25,15 @@ var player = {
     position: [0, 0],  // y - x
     last_position: [0, 0],
     direction: [0, 0],  // y - x
-    image: new Image(),
-    routine: undefined
+    image: new Image(),  // Almacena la imagen del jugador
+    routine: undefined  // Almacena el intervalo que hará moverse al jugador
 };
 var ghosts = [];
+var ghost_images = [
+    "img/ghost_purple.png",
+    "img/ghost_red.png",
+    "img/ghost_yellow.png"
+];  // Almacena la ruta de las imagenes de los fantasmas
 
 // Intervalos
 var consoleInterval = undefined;
@@ -37,8 +42,8 @@ var canvasInterval = undefined;
 // Canvas
 var blockImg = new Image();
 var floorImg = new Image();
-var c = document.getElementById("pacman");
-var ctx = c.getContext("2d");
+var canvas = document.getElementById("pacman");  // Canvas
+var ctx = canvas.getContext("2d");  // Canvas Context 2D
 
 
 /* Inicializa la aplicación */
@@ -58,15 +63,9 @@ function restartGame() {
     location.reload();
 }
 
-function deleteAllCookies() {
-    var cookies = document.cookie.split(";");
-
-    for (var i = 0; i < cookies.length; i++) {
-        var cookie = cookies[i];
-        var eqPos = cookie.indexOf("=");
-        var name = eqPos > -1 ? cookie.substr(0, eqPos) : cookie;
-        document.cookie = name + "=;expires=Thu, 01 Jan 1970 00:00:00 GMT";
-    }
+/* Genera un valor aleatorio entre un número mínimo y otro máximo */
+function randomNumber(min, max) {
+    return Math.floor(Math.random() * (max - min)) + min;
 }
 
 /* Coge el valor de la cookie especificada */
@@ -155,17 +154,15 @@ function initBoard() {
 function initPlayer() {
     var initialize = false;
     do {
-        var x = Math.floor(Math.random() * (31 - 0)) + 0; 
-        var y = Math.floor(Math.random() * (31 - 0)) + 0; 
-        if (board[y] != undefined && board[y][x] != undefined) {
-            if (board[y][x] == 1) {
-                board[y][x] = 2;  // Especifica al jugador en la casilla seleccionada.
-                player.position = [y, x];
-                player.last_position = player.position;  // Indica la última posición en la que ha estado el jugador.
-                player.routine = initPlayerRoutine();
-                player.image.src = "img/player.png";
-                initialize = true;
-            }
+        var x = randomNumber(0, 30);
+        var y = randomNumber(0, 30); 
+        if (board[y][x] == 1) {
+            board[y][x] = 2;  // Especifica al jugador en la casilla seleccionada.
+            player.position = [y, x];
+            player.last_position = player.position;  // Indica la última posición en la que ha estado el jugador.
+            player.routine = initPlayerRoutine();
+            player.image.src = "img/player.png";
+            initialize = true;
         }
     } while (!initialize);
 }
@@ -175,23 +172,18 @@ function initGhost() {
     for (var i = 0; i < 3; i++) {
         var initialize = false;
         do {
-            var x = Math.floor(Math.random() * (31 - 0)) + 0; 
-            var y = Math.floor(Math.random() * (31 - 0)) + 0; 
-            if (board[y] != undefined && board[y][x] != undefined) {
-                if (board[y][x] == 1) {
-                    board[y][x] = 3;  // Especifica al fantasma en la casilla seleccionada.
-                    ghosts.push({
-                        position: [y, x],  // y - x
-                        last_position: [y, x],
-                        image: new Image(),
-                        routine: initGhostRoutine(i)
-                    });
-                    ghosts[i].image.src = "img/ghost.png";
-                    // ghosts[i].position = [y, x];
-                    // ghosts[i].last_position = ghosts[i].position;
-                    // ghosts[i].routine = initGhostRoutine(i);
-                    initialize = true;
-                }
+            var x = randomNumber(0, 30);
+            var y = randomNumber(0, 30); 
+            if (board[y][x] == 1) {
+                board[y][x] = 3;  // Especifica al fantasma en la casilla seleccionada.
+                ghosts.push({
+                    position: [y, x],  // y - x
+                    last_position: [y, x],
+                    image: new Image(),
+                    routine: initGhostRoutine(i)
+                });
+                ghosts[i].image.src = ghost_images[i];  // Especifica la imagen del fantasma
+                initialize = true;
             }
         } while (!initialize);
     }
@@ -200,83 +192,107 @@ function initGhost() {
 /* Inicializa la rutina del personaje */
 function initPlayerRoutine() {
     return setInterval(() => {
-        var moved = false;
         var playerHasntMoved = (player.direction[0] == 0 && player.direction[1] == 0);
-        do {
-            var currentPosition = player.position;  // Posición actual del jugador
-            // Genera random entre [-1 y 1]
-            var randX = 0;
-            var randY = 0;
+        var currentPosition = player.position;  // Posición actual del fantasma en cuestión
+        var positionToMove = [];
 
-            if (playerHasntMoved) {
-                // El jugador todavía no ha apretado ninguna flecha de dirección, asi que se le
-                // asignará una ruta aleatoria.
-                randX = Math.floor(Math.random() * (2 - (-1))) + (-1);
-                randY = Math.floor(Math.random() * (2 - (-1))) + (-1);
+        if (playerHasntMoved) {
+            // El jugador todavía no ha apretado ninguna flecha de dirección, asi que se le
+            // asignará una ruta aleatoria.
+            // Obtiene la próxima posición a la que se moverá
+            positionToMove = calculateNextPosition(player, currentPosition);  // y - x
+        }
+        else {
+            // El jugador ya ha apretado una flecha de dirección, por lo cual moverá él al personaje.
+            // Obtiene la próxima posición a la que se moverá
+            positionToMove = [currentPosition[0] + player.direction[0],  // y
+                currentPosition[1] + player.direction[1]];  // x
+            if (!checkForValidPosition(positionToMove[1], positionToMove[0], player, true)) {
+                // Si no es una posición válida el personaje no se moverá
+                positionToMove = player.position;
             }
-            else {
-                // El jugador ya ha apretado una flecha de dirección, por lo cual moverá él al personaje.
-                randX = player.direction[1];
-                randY = player.direction[0];
-            }
-            
-            // Comprueba que la dirección sea horizontal o vertical
-            if ((randX == 0 && randY == 1) || (randX == 1 && randY == 0) 
-                || (randX == -1 && randY == 0) || (randX == 0 && randY == -1)) {
-                // Le suma los valores aleatorios para crear la posición a la que se podrá mover el jugador
-                var x = currentPosition[1] + randX;
-                var y = currentPosition[0] + randY;
+        }
 
-                if (board[y][x] == 1) {
-                    // El jugador se mueve si hay camino y si es una dirección diferente de por donde ha venido
-                    board[currentPosition[0]][currentPosition[1]] = 1;
-                    board[y][x] = 2;
-                    player.last_position = player.position;
-                    player.position = [y, x];
-                    moved = true;
-                }
-                else {
-                    // Colisiona contra un fantasma
-                    moved = true;  // Es necesario para que el bucle termine aunque el jugador ya haya perdido.
-                }
-            }
-        } while (!moved);
-    }, 400);  // 0,4 segundos
+        // Se comprueba si la posición a l aque va a mover está ocupada por algún fantasma
+        if (board[positionToMove[0]][positionToMove[1]] == 3) {
+            playerDefeated();  // El jugador es derrotado
+        }
+
+        // Mueve el fantasma
+        board[currentPosition[0]][currentPosition[1]] = 1;
+        board[positionToMove[0]][positionToMove[1]] = 2;
+        player.last_position = player.position;
+        player.position = [positionToMove[0], positionToMove[1]];
+
+    }, 150);  // 0,15 segundos
 }
 
 /* Inicializa la rutina del fantasma */
 function initGhostRoutine(id_ghost) {
     return setInterval((id_ghost) => {
-        var moved = false;
-        do {
-            var currentPosition = ghosts[id_ghost].position;  // Posición actual del fantasma en cuestión
-            // Genera random entre [-1 y 1]
-            var randX = Math.floor(Math.random() * (2 - (-1))) + (-1);
-            var randY = Math.floor(Math.random() * (2 - (-1))) + (-1);
-            
-            // Comprueba que la dirección sea horizontal o vertical
-            if ((randX == 0 && randY == 1) || (randX == 1 && randY == 0) 
-                || (randX == -1 && randY == 0) || (randX == 0 && randY == -1)) {
-                // Le suma los valores aleatorios para crear la posición a la que se podrá mover el fantasma
-                var x = currentPosition[1] + randX;
-                var y = currentPosition[0] + randY;
+        //var moved = false;
 
-                if ((board[y][x] == 1 || board[y][x] == 3) && (y != ghosts[id_ghost].last_position[0] || x != ghosts[id_ghost].last_position[1])) {
-                    // El fantasma se mueve si hay camino y si es una dirección diferente de por donde ha venido
-                    board[currentPosition[0]][currentPosition[1]] = 1;
-                    board[y][x] = 3;
-                    ghosts[id_ghost].last_position = ghosts[id_ghost].position;
-                    ghosts[id_ghost].position = [y, x];
-                    moved = true;
-                }
-                else if (board[y][x] == 2) {
-                    // Jugador derrotado
-                    playerDefeated();
-                    moved = true;
-                }
-            }
-        } while (!moved);
-    }, 400, id_ghost);  // 0,4 segundos
+        var currentPosition = ghosts[id_ghost].position;  // Posición actual del fantasma en cuestión
+
+        // Obtiene la próxima posición a la que se moverá
+        var positionToMove = calculateNextPosition(ghosts[id_ghost], currentPosition);  // y - x
+
+        // Se comprueba si en la posición a la que se va a mover está el jugador
+        if (board[positionToMove[0]][positionToMove[1]] == 2) {
+            playerDefeated();  // El jugador es derrotado
+        }
+
+        // Mueve el fantasma
+        board[currentPosition[0]][currentPosition[1]] = 1;
+        board[positionToMove[0]][positionToMove[1]] = 3;
+        ghosts[id_ghost].last_position = ghosts[id_ghost].position;
+        ghosts[id_ghost].position = [positionToMove[0], positionToMove[1]];
+
+    }, 200, id_ghost);  // 0,2 segundos
+}
+
+/* Calcula la próxima posición  */
+function calculateNextPosition(object, currentPosition) {  // object es el jugador o un fantasma (dependiendo de lo que le pasemos)
+    var validPositions = [];
+
+    // Comprueba las posiciones de arriba y abajo
+    for (var i = -1; i <= 1; i += 2) {
+        var x = currentPosition[1], 
+        y = currentPosition[0] + i;
+        if (checkForValidPosition(x, y, object, false)) {
+            validPositions.push([y, x]);
+        }
+    }
+    // Comprueba las posiciones de izquierda y derecha
+    for (var i = -1; i <= 1; i += 2) {
+        var x = currentPosition[1] + i, 
+        y = currentPosition[0];
+        if (checkForValidPosition(x, y, object, false)) {
+            validPositions.push([y, x]);
+        }
+    }
+
+    // Genera un random entre 0 y el máximo de movimientos disponibles para coger la próxima casilla
+    var random = randomNumber(0, validPositions.length);
+
+    return validPositions[random];
+}
+
+/* Comprueba si la posición especificada es válida o no */
+function checkForValidPosition(x, y, object, canGoBack) {
+    var positionState = board[y][x];
+    if ((positionState != 0) && (y != object.last_position[0] || x != object.last_position[1]) && !canGoBack) {
+        // En el caso de que los fantasmas puedan mover
+        return true;
+    }
+    else if (positionState != 0 && canGoBack) {
+        // En el caso de que el jugador pueda mover
+        return true;
+    }
+    else {
+        // En el caso de que nadie pueda acceder a la casilla especificada
+        return false;
+    }
 }
 
 /* El jugador gana la partida */
@@ -385,8 +401,8 @@ function createFloorCanvas() {
 /* Actualiza el canvas y el estado de la partida */
 function updateCanvas() {
     canvasInterval = setInterval(() => {
-        // Coge el 
-        c.width = c.width;
+        // Limpia el canvas para volver a mostrar las imagenes
+        canvas.width = canvas.width;
 
         // Actualiza los bloques y el suelo
         createBoardCanvas();
@@ -400,13 +416,13 @@ function updateCanvas() {
 
         // Actualiza la puntuación
         updateScore();
-    }, 200);  // 0,2 segundos
+    }, 100);  // 0,1 segundos
 }
 
 /* Actualiza la puntuación del jugador */
 function updateScore() {
     // Actualiza la puntuación
-    score += 0.2;
+    score += 0.1;
     scoreText.innerHTML = "Puntuación: " + parseInt(score);
 
     // Comprueba el tiempo restante
