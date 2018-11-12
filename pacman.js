@@ -11,7 +11,7 @@ var msg_container = document.getElementById("msg-container");
 var msg_state = document.getElementById("msg-state");
 var msg_score = document.getElementById("msg-score");
 var msg_max_score = document.getElementById("msg-max_score");
-const GAME_TIME = 180000;  // 50 minutos = 180000 segundos
+const GAME_TIME = 300;  // 50 minutos = 180000 segundos / 5 minutos = 300 segundos
 
 // Objetos
 var board = [];
@@ -160,7 +160,7 @@ function initPlayer() {
             board[y][x] = 2;  // Especifica al jugador en la casilla seleccionada.
             player.position = [y, x];
             player.last_position = player.position;  // Indica la última posición en la que ha estado el jugador.
-            player.routine = initPlayerRoutine();
+			player.routine = initPlayerRoutine();
             player.image.src = "img/player.png";
             initialize = true;
         }
@@ -208,23 +208,38 @@ function initPlayerRoutine() {
             positionToMove = [currentPosition[0] + player.direction[0],  // y
                 currentPosition[1] + player.direction[1]];  // x
             if (!checkForValidPosition(positionToMove[1], positionToMove[0], player, true)) {
-                // Si no es una posición válida el personaje no se moverá
-                positionToMove = player.position;
+                // Si la posición a mover no es válida entonces continuará en la misma dirección
+				var newY = player.position[0] + (player.position[0] - player.last_position[0]);
+				var newX = player.position[1] + (player.position[1] - player.last_position[1]);
+					// Resta la posición actual menos la última y el resultado se lo suma a la actual,
+					// por ejemplo: Si la posición "y" actual es 5 y la posición "y" anterior es 4
+					// hacemos la siguiente operación "(5 - 4)". Esto nos devolverá un 1
+					// (significa que nos hemos movido 1 posición hacia arriba).
+					// Hacemos esta operación tanto para la posición X como para la Y. Con esto podremos
+					// saber hacia qué dirección se estaba moviendo el personaje.
+					// Una vez hayamos hecho la resta, el resultado se lo sumamos a la posición actual,
+					// de esta forma tendremos la siguiente posición...
+				
+				positionToMove = [newY, newX];
+				if (!checkForValidPosition(positionToMove[1], positionToMove[0], player, true)) {
+					// Si no es una posición válida el personaje no se moverá
+					positionToMove = player.position;
+				}
             }
         }
 
-        // Se comprueba si la posición a l aque va a mover está ocupada por algún fantasma
+        // Se comprueba si la posición a la que va a mover está ocupada por algún fantasma
         if (board[positionToMove[0]][positionToMove[1]] == 3) {
             playerDefeated();  // El jugador es derrotado
         }
 
-        // Mueve el fantasma
+        // Mueve al jugador
         board[currentPosition[0]][currentPosition[1]] = 1;
         board[positionToMove[0]][positionToMove[1]] = 2;
         player.last_position = player.position;
         player.position = [positionToMove[0], positionToMove[1]];
 
-    }, 150);  // 0,15 segundos
+    }, 500);  // 0,5 segundos
 }
 
 /* Inicializa la rutina del fantasma */
@@ -248,7 +263,7 @@ function initGhostRoutine(id_ghost) {
         ghosts[id_ghost].last_position = ghosts[id_ghost].position;
         ghosts[id_ghost].position = [positionToMove[0], positionToMove[1]];
 
-    }, 200, id_ghost);  // 0,2 segundos
+    }, 500, id_ghost);  // 0,5 segundos
 }
 
 /* Calcula la próxima posición  */
@@ -416,13 +431,13 @@ function updateCanvas() {
 
         // Actualiza la puntuación
         updateScore();
-    }, 100);  // 0,1 segundos
+    }, 250);  // 0,25 segundos
 }
 
 /* Actualiza la puntuación del jugador */
 function updateScore() {
     // Actualiza la puntuación
-    score += 0.1;
+    score += 0.25;
     scoreText.innerHTML = "Puntuación: " + parseInt(score);
 
     // Comprueba el tiempo restante
